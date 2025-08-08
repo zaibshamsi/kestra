@@ -101,8 +101,22 @@ public class HttpFunction<T> implements Function {
         try (HttpClient httpClient = new HttpClient(runContext, httpConfiguration)) {
             HttpResponse<Object> response = httpClient.request(httpRequest, Object.class);
             return response.getBody();
-        } catch (HttpClientException | IllegalVariableEvaluationException | IOException e) {
-            throw new PebbleException(e, "Unable to execute HTTP request", lineNumber, self.getName());
+        }catch(HttpClientException e) {
+            string msg;
+            if (e.getStatusCode().isPresent()) {
+                msg = String.format(
+                    "HTTP request executed but failed with status code %d and body: %s",
+                    e.getStatusCode().get(),
+                    e.getBody().orElse("No response body")
+                );
+            }
+            else {
+                msg = "Failed to execute HTTP request: " + e.getMessage();
+            }
+            throw new PebbleException(e, msg , self.getName);
+        } 
+        catch( IllegalVariableEvaluationException | IOException e ) {
+            throw new PebbleException( e, "Failed to execute HTTP request ", lineNumber, self.getName());
         }
     }
 
